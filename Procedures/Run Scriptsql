@@ -1,0 +1,89 @@
+/**
+
+This Run Script contains two methods of creating and feeding data from the 
+non-partitioned existing tables to partitioned tables. The first method attempts
+to create the partitions in the tables at the table creation time which is NOT
+recommended by the tech community owing to Data Integrity Violations that might 
+happen. The second method, however, is a better way of implementation and it can
+also be modularized. The process to be followed in this method is split up into
+procedures which will be dropped at the completion of execution.
+
+TODO : 
+. Validation 
+. Tweaks 
+. Partition Purge
+**/
+
+-- Using Method 1
+--BEGIN
+--    DBMS_OUTPUT.put_line('-- RUN SCRIPT --> BEGINNING RUN <--');
+--    FOR partition_item IN (
+--        SELECT
+--            table_name,
+--            partition_column
+--        FROM
+--            partition_table
+--    ) LOOP
+--        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> exec_multiple_table_create_alt <--');
+--        exec_multiple_table_create_alt(partition_item.table_name, partition_item.partition_column);
+--        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> create_indexes <--');
+--        create_indexes(partition_item.table_name, partition_item.partition_column);
+--        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> feed_data <--');
+--        feed_data(partition_item.table_name);
+--        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> drop_table <--');
+--        drop_table(partition_item.table_name);
+--        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> rename_table <--');
+--        rename_table(partition_item.table_name);
+--        COMMIT;
+--    END LOOP;
+--    
+--    EXCEPTION
+--    WHEN no_data_found THEN
+--        DBMS_OUTPUT.PUT_LINE('No Data Found');    
+--    WHEN OTHERS THEN
+--        DBMS_OUTPUT.PUT_LINE('Something Else Went Wrong');    
+--    DBMS_OUTPUT.put_line('-- RUN SCRIPT --> ENDING RUN <--');    
+--END;
+
+-- Using Method 2
+BEGIN
+--    load_temp_table();
+    dbms_output.new_line;
+    dbms_output.put_line('-- RUN SCRIPT --> BEGINNING EXECUTION <--');
+    FOR partition_item IN (
+        SELECT
+            table_name,
+            partition_column
+        FROM
+            partition_table
+    ) LOOP
+        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> exec_multiple_table_create <--');
+        dbms_output.put_line(' Executing table: '
+                             || partition_item.table_name
+                             || ' and column_name: '
+                             || partition_item.partition_column);
+
+        exec_multiple_table_create(partition_item.table_name, partition_item.partition_column);
+--        proc_subpartition_test(partition_item.table_name, partition_item.partition_column);
+        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> create_indexes <--');
+        create_indexes(partition_item.table_name, partition_item.partition_column);
+        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> feed_data <--');
+        feed_data(partition_item.table_name);
+        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> drop_table <--');
+--      UNCOMMENT DROP TABLE COMMAND
+--      drop_table(partition_item.table_name);
+        dbms_output.put_line('  RUN SCRIPT.INITIATING PROCEDURE --> rename_table <--');
+        rename_table(partition_item.table_name);
+        COMMIT;
+        dbms_output.put_line(' RUN SCRIPT.INITIATING PROCEDURE --> analyze_table <--');
+        analyze_table(partition_item.table_name);
+    END LOOP;
+
+    dbms_output.put_line('-- RUN SCRIPT --> ENDING EXECUTION <--');
+    dbms_output.new_line;
+EXCEPTION
+    WHEN no_data_found THEN
+        dbms_output.put_line('No Data Found');
+        dbms_output.put_line('-- RUN SCRIPT --> EXCEPTION OCCURRED. ENDING EXECUTION <--');
+        dbms_output.new_line;
+END;
